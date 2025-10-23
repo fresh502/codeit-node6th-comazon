@@ -1,5 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import { assert } from 'superstruct';
+import { CreateProduct, CreateUser, PatchProduct, PatchUser } from './structs.js';
 
 const app = express();
 app.use(express.json());
@@ -9,6 +11,7 @@ const prisma = new PrismaClient();
 // users
 app.post('/users', async (req, res) => {
   const data = req.body;
+  assert(data, CreateUser);
   const user = await prisma.user.create({
     data,
   });
@@ -50,8 +53,8 @@ app.get('/users/:id', async (req, res) => {
 
 app.patch('/users/:id', async (req, res) => {
   const { id } = req.params;
-  // const id = req.params.id
   const data = req.body;
+  assert(data, PatchUser);
   const user = await prisma.user.update({
     where: { id },
     data,
@@ -70,6 +73,7 @@ app.delete('/users/:id', async (req, res) => {
 // products
 app.post('/products', async (req, res) => {
   const data = req.body;
+  assert(data, CreateProduct);
   const product = await prisma.product.create({
     data,
   });
@@ -116,6 +120,7 @@ app.get('/products/:id', async (req, res) => {
 app.patch('/products/:id', async (req, res) => {
   const { id } = req.params;
   const data = req.body;
+  assert(data, PatchProduct);
   const product = await prisma.product.update({
     where: { id },
     data,
