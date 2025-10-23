@@ -10,11 +10,18 @@ const prisma = new PrismaClient();
 
 // users
 app.post('/users', async (req, res) => {
-  const data = req.body;
-  assert(data, CreateUser);
+  assert(req.body, CreateUser);
+  const { userPreference, ...userFields } = req.body;
+
   const user = await prisma.user.create({
-    data,
+    data: {
+      ...userFields,
+      userPreference: {
+        create: userPreference,
+      },
+    },
   });
+  user.user;
   res.status(201).send(user);
 });
 
@@ -42,8 +49,10 @@ app.get('/users', async (req, res) => {
 app.get('/users/:id', async (req, res) => {
   const id = req.params.id;
   const user = await prisma.user.findUnique({
+    include: { userPreference: true },
     where: { id },
   });
+  user.userPreference;
   if (user) {
     res.send(user);
   } else {

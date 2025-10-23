@@ -6,6 +6,9 @@ export const CreateUser = s.object({
   firstName: s.size(s.string(), 1, 30),
   lastName: s.size(s.string(), 1, 30),
   address: s.string(),
+  userPreference: s.object({
+    receiveEmail: s.boolean(),
+  }),
 });
 
 export const PatchUser = s.partial(CreateUser);
