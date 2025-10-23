@@ -1,7 +1,7 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { assert } from 'superstruct';
-import { CreateProduct, CreateUser, PatchProduct, PatchUser } from './structs.js';
+import { CreateOrder, CreateProduct, CreateUser, PatchProduct, PatchUser } from './structs.js';
 
 const app = express();
 app.use(express.json());
@@ -19,6 +19,9 @@ app.post('/users', async (req, res) => {
       userPreference: {
         create: userPreference,
       },
+    },
+    include: {
+      userPreference: true,
     },
   });
   user.user;
@@ -42,6 +45,9 @@ app.get('/users', async (req, res) => {
     orderBy,
     skip: parseInt(offset),
     take: parseInt(limit),
+    include: {
+      userPreference: true,
+    },
   });
   res.send(users);
 });
@@ -49,10 +55,9 @@ app.get('/users', async (req, res) => {
 app.get('/users/:id', async (req, res) => {
   const id = req.params.id;
   const user = await prisma.user.findUnique({
-    include: { userPreference: true },
     where: { id },
+    include: { userPreference: true },
   });
-  user.userPreference;
   if (user) {
     res.send(user);
   } else {
@@ -62,11 +67,19 @@ app.get('/users/:id', async (req, res) => {
 
 app.patch('/users/:id', async (req, res) => {
   const { id } = req.params;
-  const data = req.body;
-  assert(data, PatchUser);
+  assert(req.body, PatchUser);
+  const { userPreference, ...userFields } = req.body;
   const user = await prisma.user.update({
     where: { id },
-    data,
+    data: {
+      ...userFields,
+      userPreference: {
+        update: userPreference,
+      },
+    },
+    include: {
+      userPreference: true,
+    },
   });
   res.send(user);
 });
@@ -143,6 +156,30 @@ app.delete('/products/:id', async (req, res) => {
     where: { id },
   });
   res.send(product);
+});
+
+// Orders
+app.get('/orders', async (req, res) => {
+  const data = prisma.order.findMany();
+  res.send(data);
+});
+
+app.post('/orders', async (req, res) => {
+  assert(req.body, CreateOrder);
+  const { orderItems, ...orderProperties } = req.body;
+  const order = await prisma.order.create({
+    data: {
+      ...orderProperties,
+      orderItems: {
+        create: orderItems,
+      },
+    },
+    include: {
+      orderItems: true,
+    },
+  });
+
+  res.send(order);
 });
 
 app.listen(process.env.PORT || 3000, () => console.log(`Server started`));
