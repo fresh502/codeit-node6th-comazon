@@ -188,28 +188,29 @@ app.post('/orders', async (req, res) => {
     return res.status(500).send({ message: 'Insufficient Stock' });
   }
 
-  await Promise.all(
-    productIds.map((id) => {
-      return prisma.product.update({
-        where: { id },
-        data: { stock: { decrement: getQuantity(id) } },
-      });
-    }),
-  );
-
-  const order = await prisma.order.create({
-    data: {
-      user: {
-        connect: { id: orderProperties.userId },
-      },
-      orderItems: {
-        create: orderItems,
-      },
-    },
-    include: {
-      orderItems: true,
-    },
+  const queries = productIds.map((id) => {
+    return prisma.product.update({
+      where: { id },
+      data: { stock: { decrement: getQuantity(id) } },
+    });
   });
+
+  const [order] = await prisma.$transaction([
+    prisma.order.create({
+      data: {
+        user: {
+          connect: { id: orderProperties.userId },
+        },
+        orderItems: {
+          create: orderItems,
+        },
+      },
+      include: {
+        orderItems: true,
+      },
+    }),
+    ...queries,
+  ]);
 
   res.send(order);
 });
