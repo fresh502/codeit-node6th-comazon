@@ -160,16 +160,48 @@ app.delete('/products/:id', async (req, res) => {
 
 // Orders
 app.get('/orders', async (req, res) => {
-  const data = prisma.order.findMany();
+  const data = await prisma.order.findMany();
   res.send(data);
 });
 
 app.post('/orders', async (req, res) => {
   assert(req.body, CreateOrder);
   const { orderItems, ...orderProperties } = req.body;
+
+  const productIds = orderItems.map((orderItem) => orderItem.productId);
+
+  function getQuantity(productId) {
+    const orderItem = orderItems.find((orderItem) => orderItem.productId === productId);
+    return orderItem.quantity;
+  }
+
+  // 재고가 충분한가?
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+  });
+  const isSufficientStock = products.every((product) => {
+    const { id, stock } = product;
+    return stock >= getQuantity(id);
+  });
+
+  if (!isSufficientStock) {
+    return res.status(500).send({ message: 'Insufficient Stock' });
+  }
+
+  await Promise.all(
+    productIds.map((id) => {
+      return prisma.product.update({
+        where: { id },
+        data: { stock: { decrement: getQuantity(id) } },
+      });
+    }),
+  );
+
   const order = await prisma.order.create({
     data: {
-      ...orderProperties,
+      user: {
+        connect: { id: orderProperties.userId },
+      },
       orderItems: {
         create: orderItems,
       },
