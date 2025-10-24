@@ -1,5 +1,5 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { assert } from 'superstruct';
 import { CreateOrder, CreateProduct, CreateUser, PatchProduct, PatchUser } from './structs.js';
 
@@ -14,8 +14,13 @@ function asyncHandler(handler) {
       await handler(req, res);
     } catch (e) {
       console.error(e);
-      if (e.code === 'P2025') {
+
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
         res.sendStatus(404);
+      } else if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        res.status(400).send({ message: e.message });
+      } else if (e.name === 'StructError') {
+        res.status(400).send({ message: e.message });
       } else {
         res.status(500).send({ message: e.message });
       }
@@ -24,24 +29,26 @@ function asyncHandler(handler) {
 }
 
 // users
-app.post('/users', async (req, res) => {
-  assert(req.body, CreateUser);
-  const { userPreference, ...userFields } = req.body;
+app.post(
+  '/users',
+  asyncHandler(async (req, res) => {
+    assert(req.body, CreateUser);
+    const { userPreference, ...userFields } = req.body;
 
-  const user = await prisma.user.create({
-    data: {
-      ...userFields,
-      userPreference: {
-        create: userPreference,
+    const user = await prisma.user.create({
+      data: {
+        ...userFields,
+        userPreference: {
+          create: userPreference,
+        },
       },
-    },
-    include: {
-      userPreference: true,
-    },
-  });
-  user.user;
-  res.status(201).send(user);
-});
+      include: {
+        userPreference: true,
+      },
+    });
+    res.status(201).send(user);
+  }),
+);
 
 app.get('/users', async (req, res) => {
   const { offset = 0, limit = 0, order = 'newest' } = req.query;
