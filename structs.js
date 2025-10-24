@@ -24,6 +24,8 @@ const CATEGORIES = [
   'KITCHENWARE',
 ];
 
+const ORDER_STATUS = ['PENDING', 'COMPLETE'];
+
 export const CreateProduct = s.object({
   name: s.size(s.string(), 1, 60),
   description: s.string(),
@@ -43,4 +45,8 @@ export const CreateOrder = s.object({
       quantity: s.min(s.integer(), 1),
     }),
   ),
+});
+
+export const PatchOrder = s.object({
+  status: s.enums(ORDER_STATUS),
 });

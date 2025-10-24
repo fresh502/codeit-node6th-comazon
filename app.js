@@ -1,7 +1,14 @@
 import express from 'express';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { assert } from 'superstruct';
-import { CreateOrder, CreateProduct, CreateUser, PatchProduct, PatchUser } from './structs.js';
+import {
+  CreateOrder,
+  CreateProduct,
+  CreateUser,
+  PatchOrder,
+  PatchProduct,
+  PatchUser,
+} from './structs.js';
 
 const app = express();
 app.use(express.json());
@@ -204,60 +211,112 @@ app.delete(
 );
 
 // Orders
-app.get('/orders', async (req, res) => {
-  const data = await prisma.order.findMany();
-  res.send(data);
-});
+app.get(
+  '/orders',
+  asyncHandler(async (req, res) => {
+    const data = await prisma.order.findMany();
+    res.send(data);
+  }),
+);
 
-app.post('/orders', async (req, res) => {
-  assert(req.body, CreateOrder);
-  const { orderItems, ...orderProperties } = req.body;
-
-  const productIds = orderItems.map((orderItem) => orderItem.productId);
-
-  function getQuantity(productId) {
-    const orderItem = orderItems.find((orderItem) => orderItem.productId === productId);
-    return orderItem.quantity;
-  }
-
-  // 재고가 충분한가?
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds } },
-  });
-  const isSufficientStock = products.every((product) => {
-    const { id, stock } = product;
-    return stock >= getQuantity(id);
-  });
-
-  if (!isSufficientStock) {
-    return res.status(500).send({ message: 'Insufficient Stock' });
-  }
-
-  const queries = productIds.map((id) => {
-    return prisma.product.update({
+app.get(
+  '/orders/:id',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const order = await prisma.order.findUniqueOrThrow({
       where: { id },
-      data: { stock: { decrement: getQuantity(id) } },
-    });
-  });
-
-  const [order] = await prisma.$transaction([
-    prisma.order.create({
-      data: {
-        user: {
-          connect: { id: orderProperties.userId },
-        },
-        orderItems: {
-          create: orderItems,
-        },
-      },
       include: {
-        orderItems: true,
+        orderItems: {
+          include: {
+            product: true,
+          },
+        },
       },
-    }),
-    ...queries,
-  ]);
+    });
+    let total = 0;
+    order.orderItems.forEach((orderItem) => {
+      total += orderItem.unitPrice * orderItem.quantity;
+    });
+    order.total = total;
+    res.send(order);
+  }),
+);
 
-  res.send(order);
-});
+app.post(
+  '/orders',
+  asyncHandler(async (req, res) => {
+    assert(req.body, CreateOrder);
+    const { orderItems, ...orderProperties } = req.body;
+
+    const productIds = orderItems.map((orderItem) => orderItem.productId);
+
+    function getQuantity(productId) {
+      const orderItem = orderItems.find((orderItem) => orderItem.productId === productId);
+      return orderItem.quantity;
+    }
+
+    // 재고가 충분한가?
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+    const isSufficientStock = products.every((product) => {
+      const { id, stock } = product;
+      return stock >= getQuantity(id);
+    });
+
+    if (!isSufficientStock) {
+      return res.status(500).send({ message: 'Insufficient Stock' });
+    }
+
+    const queries = productIds.map((id) => {
+      return prisma.product.update({
+        where: { id },
+        data: { stock: { decrement: getQuantity(id) } },
+      });
+    });
+
+    const [order] = await prisma.$transaction([
+      prisma.order.create({
+        data: {
+          user: {
+            connect: { id: orderProperties.userId },
+          },
+          orderItems: {
+            create: orderItems,
+          },
+        },
+        include: {
+          orderItems: true,
+        },
+      }),
+      ...queries,
+    ]);
+
+    res.send(order);
+  }),
+);
+
+app.patch(
+  '/orders/:id',
+  asyncHandler(async (req, res) => {
+    assert(req.body, PatchOrder);
+    const { id } = req.params;
+    const { status } = req.body;
+    const data = await prisma.order.update({
+      where: { id },
+      data: { status },
+    });
+    res.send(data);
+  }),
+);
+
+app.delete(
+  '/orders/:id',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await prisma.order.delete({ where: { id } });
+    res.sendStatus(204);
+  }),
+);
 
 app.listen(process.env.PORT || 3000, () => console.log(`Server started`));
