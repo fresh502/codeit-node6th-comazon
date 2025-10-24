@@ -8,6 +8,21 @@ app.use(express.json());
 
 const prisma = new PrismaClient();
 
+function asyncHandler(handler) {
+  return async function (req, res) {
+    try {
+      await handler(req, res);
+    } catch (e) {
+      console.error(e);
+      if (e.code === 'P2025') {
+        res.sendStatus(404);
+      } else {
+        res.status(500).send({ message: e.message });
+      }
+    }
+  };
+}
+
 // users
 app.post('/users', async (req, res) => {
   assert(req.body, CreateUser);
@@ -52,18 +67,17 @@ app.get('/users', async (req, res) => {
   res.send(users);
 });
 
-app.get('/users/:id', async (req, res) => {
-  const id = req.params.id;
-  const user = await prisma.user.findUnique({
-    where: { id },
-    include: { userPreference: true },
-  });
-  if (user) {
+app.get(
+  '/users/:id',
+  asyncHandler(async (req, res) => {
+    const id = req.params.id;
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id },
+      include: { userPreference: true },
+    });
     res.send(user);
-  } else {
-    res.status(404).send({ message: 'Cannot find given id' });
-  }
-});
+  }),
+);
 
 app.patch('/users/:id', async (req, res) => {
   const { id } = req.params;
