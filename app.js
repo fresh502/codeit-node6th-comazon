@@ -50,29 +50,32 @@ app.post(
   }),
 );
 
-app.get('/users', async (req, res) => {
-  const { offset = 0, limit = 0, order = 'newest' } = req.query;
-  let orderBy;
-  switch (order) {
-    case 'oldest':
-      orderBy = { createdAt: 'asc' };
-      break;
-    case 'newest':
-      orderBy = { createdAt: 'desc' };
-      break;
-    default:
-      orderBy = { createdAt: 'desc' };
-  }
-  const users = await prisma.user.findMany({
-    orderBy,
-    skip: parseInt(offset),
-    take: parseInt(limit),
-    include: {
-      userPreference: true,
-    },
-  });
-  res.send(users);
-});
+app.get(
+  '/users',
+  asyncHandler(async (req, res) => {
+    const { offset = 0, limit = 0, order = 'newest' } = req.query;
+    let orderBy;
+    switch (order) {
+      case 'oldest':
+        orderBy = { createdAt: 'asc' };
+        break;
+      case 'newest':
+        orderBy = { createdAt: 'desc' };
+        break;
+      default:
+        orderBy = { createdAt: 'desc' };
+    }
+    const users = await prisma.user.findMany({
+      orderBy,
+      skip: parseInt(offset),
+      take: parseInt(limit),
+      include: {
+        userPreference: true,
+      },
+    });
+    res.send(users);
+  }),
+);
 
 app.get(
   '/users/:id',
@@ -86,32 +89,38 @@ app.get(
   }),
 );
 
-app.patch('/users/:id', async (req, res) => {
-  const { id } = req.params;
-  assert(req.body, PatchUser);
-  const { userPreference, ...userFields } = req.body;
-  const user = await prisma.user.update({
-    where: { id },
-    data: {
-      ...userFields,
-      userPreference: {
-        update: userPreference,
+app.patch(
+  '/users/:id',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    assert(req.body, PatchUser);
+    const { userPreference, ...userFields } = req.body;
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        ...userFields,
+        userPreference: {
+          update: userPreference,
+        },
       },
-    },
-    include: {
-      userPreference: true,
-    },
-  });
-  res.send(user);
-});
+      include: {
+        userPreference: true,
+      },
+    });
+    res.send(user);
+  }),
+);
 
-app.delete('/users/:id', async (req, res) => {
-  const { id } = req.params;
-  const user = await prisma.user.delete({
-    where: { id },
-  });
-  res.send(user);
-});
+app.delete(
+  '/users/:id',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const user = await prisma.user.delete({
+      where: { id },
+    });
+    res.send(user);
+  }),
+);
 
 // products
 app.post('/products', async (req, res) => {
