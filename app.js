@@ -8,6 +8,7 @@ import {
   PatchOrder,
   PatchProduct,
   PatchUser,
+  SaveProduct,
 } from './structs.js';
 
 const app = express();
@@ -126,6 +127,29 @@ app.delete(
       where: { id },
     });
     res.send(user);
+  }),
+);
+
+app.post(
+  '/users/:id/save',
+  asyncHandler(async (req, res) => {
+    assert(req.body, SaveProduct);
+    const { id: userId } = req.params;
+    const { productId } = req.body;
+    const data = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        savedItems: {
+          connect: {
+            id: productId,
+          },
+        },
+      },
+      include: {
+        savedItems: true,
+      },
+    });
+    res.status(201).send(data);
   }),
 );
 

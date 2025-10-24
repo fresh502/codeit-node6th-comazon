@@ -50,3 +50,7 @@ export const CreateOrder = s.object({
 export const PatchOrder = s.object({
   status: s.enums(ORDER_STATUS),
 });
+
+export const SaveProduct = s.object({
+  productId: s.define('Uuid', (value) => isUuid.v4(value)),
+});
