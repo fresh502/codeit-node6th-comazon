@@ -1,6 +1,7 @@
 import express from 'express';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { assert } from 'superstruct';
+import cors from 'cors';
 import {
   CreateOrder,
   CreateProduct,
@@ -10,8 +11,10 @@ import {
   PatchUser,
   SaveProduct,
 } from './structs.js';
+import { PORT } from './constants.js';
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const prisma = new PrismaClient();
@@ -91,7 +94,10 @@ app.get(
     const id = req.params.id;
     const user = await prisma.user.findUniqueOrThrow({
       where: { id },
-      include: { userPreference: true },
+      include: {
+        userPreference: true,
+        savedItems: true,
+      },
     });
     res.send(user);
   }),
@@ -343,4 +349,4 @@ app.delete(
   }),
 );
 
-app.listen(process.env.PORT || 3000, () => console.log(`Server started`));
+app.listen(PORT || 3000, () => console.log(`Server started`));
