@@ -123,70 +123,85 @@ app.delete(
 );
 
 // products
-app.post('/products', async (req, res) => {
-  const data = req.body;
-  assert(data, CreateProduct);
-  const product = await prisma.product.create({
-    data,
-  });
-  res.status(201).send(product);
-});
+app.post(
+  '/products',
+  asyncHandler(async (req, res) => {
+    const data = req.body;
+    assert(data, CreateProduct);
+    const product = await prisma.product.create({
+      data,
+    });
+    res.status(201).send(product);
+  }),
+);
 
-app.get('/products', async (req, res) => {
-  const { offset = 0, limit = 0, order = 'newest', category } = req.query;
-  let orderBy;
-  switch (order) {
-    case 'priceLowest':
-      orderBy = { price: 'asc' };
-      break;
-    case 'priceHighest':
-      orderBy = { price: 'desc' };
-      break;
-    case 'oldest':
-      orderBy = { createdAt: 'asc' };
-      break;
-    case 'newest':
-      orderBy = { createdAt: 'desc' };
-      break;
-    default:
-      orderBy = { createdAt: 'desc' };
-  }
-  const where = category ? { category } : {};
-  const products = await prisma.product.findMany({
-    where,
-    orderBy,
-    skip: parseInt(offset),
-    take: parseInt(limit),
-  });
-  res.send(products);
-});
+app.get(
+  '/products',
+  asyncHandler(async (req, res) => {
+    const { offset = 0, limit = 0, order = 'newest', category } = req.query;
+    let orderBy;
+    switch (order) {
+      case 'priceLowest':
+        orderBy = { price: 'asc' };
+        break;
+      case 'priceHighest':
+        orderBy = { price: 'desc' };
+        break;
+      case 'oldest':
+        orderBy = { createdAt: 'asc' };
+        break;
+      case 'newest':
+        orderBy = { createdAt: 'desc' };
+        break;
+      default:
+        orderBy = { createdAt: 'desc' };
+    }
+    const where = category ? { category } : {};
+    const products = await prisma.product.findMany({
+      where,
+      orderBy,
+      skip: parseInt(offset),
+      take: parseInt(limit),
+    });
+    res.send(products);
+  }),
+);
 
-app.get('/products/:id', async (req, res) => {
-  const { id } = req.params;
-  const product = await prisma.product.findUnique({
-    where: { id },
-  });
-  res.send(product);
-});
+app.get(
+  '/products/:id',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const product = await prisma.product.findUniqueOrThrow({
+      where: { id },
+    });
+    res.send(product);
+  }),
+);
 
-app.patch('/products/:id', async (req, res) => {
-  const { id } = req.params;
-  const data = req.body;
-  assert(data, PatchProduct);
-  const product = await prisma.product.update({
-    where: { id },
-    data,
-  });
-  res.send(product);
-});
+app.patch(
+  '/products/:id',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = req.body;
+    assert(data, PatchProduct);
+    const product = await prisma.product.update({
+      where: { id },
+      data,
+    });
+    res.send(product);
+  }),
+);
 
-app.delete('/products/:id', async (req, res) => {
-  const { id } = req.params;
-  const product = await prisma.product.delete({
-    where: { id },
-  });
-  res.send(product);
-});
+app.delete(
+  '/products/:id',
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await prisma.product.delete({
+      where: { id },
+    });
+    res.sendStatus(204);
+  }),
+);
 
 // Orders
 app.get('/orders', async (req, res) => {
